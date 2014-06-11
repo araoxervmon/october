@@ -120,7 +120,7 @@ class Form extends WidgetBase
      */
     public function loadAssets()
     {
-        $this->addJs('js/form.js');
+        $this->addJs('js/form.js', 'core');
     }
 
     /**
@@ -353,7 +353,10 @@ class Form extends WidgetBase
     protected function makeFormField($name, $config)
     {
         $label = (isset($config['label'])) ? $config['label'] : null;
-        $field = new FormField($name, $label);
+        list($fieldName, $fieldContext) = $this->getFieldName($name);
+
+        $field = new FormField($fieldName, $label);
+        if ($fieldContext) $field->context = $fieldContext;
         $field->arrayName = $this->arrayName;
         $field->idPrefix = $this->getId();
 
@@ -372,33 +375,15 @@ class Form extends WidgetBase
             return $field;
         }
 
+        /*
+         * Defined field type
+         */
         $fieldType = isset($config['type']) ? $config['type'] : null;
         if (!is_string($fieldType) && !is_null($fieldType))
             throw new ApplicationException(Lang::get('backend::lang.field.invalid_type', ['type'=>gettype($fieldType)]));
 
         /*
-         * Widget with options
-         */
-        if ($this->isFormWidget($fieldType) !== false) {
-            $fieldOptions = (isset($config['options'])) ? $config['options'] : [];
-            $fieldOptions['widget'] = $fieldType;
-            $field->displayAs('widget', $fieldOptions);
-        }
-        /*
-         * Simple field with options
-         */
-        elseif (strlen($fieldType)) {
-            $fieldOptions = (isset($config['options'])) ? $config['options'] : [];
-            $studlyField = studly_case(strtolower($fieldType));
-
-            if (method_exists($this, 'eval'.$studlyField.'Options'))
-                $fieldOptions = $this->{'eval'.$studlyField.'Options'}($field, $fieldOptions);
-
-            $field->displayAs($fieldType, $fieldOptions);
-        }
-
-        /*
-         * Process remaining options
+         * Process basic options
          */
         if (isset($config['span'])) $field->span($config['span']);
         if (isset($config['context'])) $field->context = $config['context'];
@@ -420,6 +405,27 @@ class Form extends WidgetBase
          * Set field value
          */
         $field->value = $this->getFieldValue($field);
+
+        /*
+         * Widget with options
+         */
+        if ($this->isFormWidget($fieldType) !== false) {
+            $fieldOptions = (isset($config['options'])) ? $config['options'] : [];
+            $fieldOptions['widget'] = $fieldType;
+            $field->displayAs('widget', $fieldOptions);
+        }
+        /*
+         * Simple field with options
+         */
+        elseif (strlen($fieldType)) {
+            $fieldOptions = (isset($config['options'])) ? $config['options'] : null;
+            $studlyField = studly_case(strtolower($fieldType));
+
+            if (method_exists($this, 'eval'.$studlyField.'Options'))
+                $fieldOptions = $this->{'eval'.$studlyField.'Options'}($field, $fieldOptions);
+
+            $field->displayAs($fieldType, $fieldOptions);
+        }
 
         return $field;
     }
@@ -468,6 +474,19 @@ class Form extends WidgetBase
 
         $widget = new $widgetClass($this->controller, $this->model, $field, $widgetConfig);
         return $this->formWidgets[$field->columnName] = $widget;
+    }
+
+    /**
+     * Parses a field's name
+     * @param stirng $field Field name
+     * @return array [columnName, context]
+     */
+    public function getFieldName($field)
+    {
+        if (strpos($field, '@') === false)
+            return [$field, null];
+
+        return explode('@', $field);
     }
 
     /**
@@ -593,18 +612,25 @@ class Form extends WidgetBase
      */
     private function getOptionsFromModel($field, $fieldOptions)
     {
-        if (!$fieldOptions) {
+        if (is_array($fieldOptions) && is_callable($fieldOptions)) {
+            $fieldOptions = call_user_func($fieldOptions, $this, $field);
+        }
+
+        if (!is_array($fieldOptions) && !$fieldOptions) {
             $methodName = 'get'.studly_case($field->columnName).'Options';
-            if (!method_exists($this->model, $methodName))
+            if (!method_exists($this->model, $methodName) && !method_exists($this->model, 'getDropdownOptions'))
                 throw new ApplicationException(Lang::get('backend::lang.field.options_method_not_exists', ['model'=>get_class($this->model), 'method'=>$methodName, 'field'=>$field->columnName]));
 
-            $fieldOptions = $this->model->$methodName();
+            if (method_exists($this->model, $methodName))
+                $fieldOptions = $this->model->$methodName($field->value);
+            else
+                $fieldOptions = $this->model->getDropdownOptions($field->columnName, $field->value);
         }
-        else if (is_string($fieldOptions)) {
+        elseif (is_string($fieldOptions)) {
             if (!method_exists($this->model, $fieldOptions))
                 throw new ApplicationException(Lang::get('backend::lang.field.options_method_not_exists', ['model'=>get_class($this->model), 'method'=>$fieldOptions, 'field'=>$field->columnName]));
 
-            $fieldOptions = $this->model->$fieldOptions();
+            $fieldOptions = $this->model->$fieldOptions($field->value, $field->columnName);
         }
 
         return $fieldOptions;

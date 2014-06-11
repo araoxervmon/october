@@ -140,7 +140,7 @@ if (window.jQuery === undefined)
                 var _event = jQuery.Event('ajaxErrorMessage')
                 $(window).trigger(_event, [message])
                 if (_event.isDefaultPrevented()) return
-                alert(message)
+                if (message) alert(message)
             },
 
             /*
@@ -161,6 +161,8 @@ if (window.jQuery === undefined)
                         var selector = (options.update[partial]) ? options.update[partial] : partial
                         if (jQuery.type(selector) == 'string' && selector.charAt(0) == '@') {
                             $(selector.substring(1)).append(data[partial]).trigger('ajaxUpdate', [context, data, textStatus, jqXHR])
+                        } else if (jQuery.type(selector) == 'string' && selector.charAt(0) == '^') {
+                            $(selector.substring(1)).prepend(data[partial]).trigger('ajaxUpdate', [context, data, textStatus, jqXHR])
                         } else
                             $(selector).html(data[partial]).trigger('ajaxUpdate', [context, data, textStatus, jqXHR])
                     }

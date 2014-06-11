@@ -8,11 +8,13 @@ use Input;
 use Event;
 use Backend;
 use DbDongle;
+use Carbon\Carbon;
 use October\Rain\Router\Helper as RouterHelper;
 use Backend\Classes\ListColumn;
 use Backend\Classes\WidgetBase;
 use System\Classes\ApplicationException;
 use October\Rain\Database\Model;
+use DateTime;
 
 /**
  * List Widget
@@ -157,7 +159,7 @@ class Lists extends WidgetBase
      */
     public function loadAssets()
     {
-        $this->addJs('js/october.list.js');
+        $this->addJs('js/october.list.js', 'core');
     }
 
     /**
@@ -274,15 +276,20 @@ class Lists extends WidgetBase
 
             $alias = Db::getQueryGrammar()->wrap($column->columnName);
             $table =  $this->model->makeRelation($column->relation)->getTable();
+            $relationType = $this->model->getRelationType($column->relation);
             $sqlSelect = $this->parseTableName($column->sqlSelect, $table);
 
-            $selects[] = DbDongle::raw("group_concat(" . $sqlSelect . " separator ', ') as ". $alias);
+            if (in_array($relationType, ['hasMany', 'belongsToMany', 'morphToMany', 'morphedByMany', 'morphMany', 'attachMany', 'hasManyThrough']))
+                $selects[] = DbDongle::raw("group_concat(" . $sqlSelect . " separator ', ') as ". $alias);
+            else
+                $selects[] = DbDongle::raw($sqlSelect . ' as '. $alias);
+
             $joins[] = $column->relation;
             $tables[$column->relation] = $table;
         }
 
         if ($joins)
-            $query->joinWith(array_unique($joins));
+            $query->joinWith(array_unique($joins), false);
 
         /*
          * Custom select queries
@@ -309,7 +316,7 @@ class Lists extends WidgetBase
                         $columnName = DbDongle::raw($this->parseTableName($column->sqlSelect, $table));
                     }
                     else
-                        $columnName = $column->columnName;
+                        $columnName = $tables['base'] . '.' . $column->columnName;
 
                     $columnsToSearch[] = $columnName;
                 }
@@ -441,7 +448,13 @@ class Lists extends WidgetBase
         if (!isset($this->config->columns) || !is_array($this->config->columns) || !count($this->config->columns))
             throw new ApplicationException(Lang::get('backend::lang.list.missing_columns', ['class'=>get_class($this->controller)]));
 
-        $definitions = $this->config->columns;
+        $this->addColumns($this->config->columns);
+
+        /*
+         * Extensibility
+         */
+        Event::fire('backend.list.extendColumns', [$this]);
+        $this->fireEvent('list.extendColumns', $this);
 
         /*
          * Use a supplied column order
@@ -449,20 +462,26 @@ class Lists extends WidgetBase
         if ($columnOrder = $this->getSession('order', null)) {
             $orderedDefinitions = [];
             foreach ($columnOrder as $column) {
-                $orderedDefinitions[$column] = $definitions[$column];
+                $orderedDefinitions[$column] = $this->columns[$column];
             }
 
-            $definitions = array_merge($orderedDefinitions, $definitions);
-        }
-
-        /*
-         * Build a final collection of list column objects
-         */
-        foreach ($definitions as $columnName => $config) {
-            $this->columns[$columnName] = $this->makeListColumn($columnName, $config);
+            $this->columns = array_merge($orderedDefinitions, $this->columns);
         }
 
         return $this->columns;
+    }
+
+    /**
+     * Programatically add columns, used internally and for extensibility.
+     */
+    public function addColumns(array $columns)
+    {
+        /*
+         * Build a final collection of list column objects
+         */
+        foreach ($columns as $columnName => $config) {
+            $this->columns[$columnName] = $this->makeListColumn($columnName, $config);
+        }
     }
 
     /**
@@ -630,7 +649,13 @@ class Lists extends WidgetBase
     {
         if ($value === null)
             return null;
-        
+
+        if ($value instanceof DateTime)
+            $value = Carbon::instance($value);
+
+        if (!$value instanceof Carbon)
+            throw new ApplicationException(sprintf('Column value %s is not a DateTime object, are you missing a $dates reference in the Model?', $column->columnName));
+
         return $value->diffForHumans();
     }
 

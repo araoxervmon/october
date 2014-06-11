@@ -17,14 +17,10 @@ class CmsObjectQuery
 
     protected $theme;
 
-    public function __construct($cmsObject, $theme)
+    public function __construct($cmsObject, $theme = null)
     {
         $this->cmsObject = $cmsObject;
-
-        if ($theme)
-            $this->theme = $theme;
-        else
-            $this->inEditTheme();
+        $this->theme = $theme;
     }
 
     /**
@@ -67,11 +63,30 @@ class CmsObjectQuery
     }
 
     /**
+     * Finds a single Cms Object by its file name
+     * @param  string $fileName
+     * @return CmsObject
+     */
+    public function find($fileName)
+    {
+        if (!$this->theme)
+            $this->inEditTheme();
+
+        if ($this->useCache)
+            return forward_static_call([$this->cmsObject, 'loadCached'], $this->theme, $fileName);
+        else
+            return forward_static_call([$this->cmsObject, 'load'], $this->theme, $fileName);
+    }
+
+    /**
      * Returns all CMS objects for the set theme
      * @return CmsObjectCollection
      */
     public function all()
     {
+        if (!$this->theme)
+            $this->inEditTheme();
+
         $collection = forward_static_call([$this->cmsObject, 'listInTheme'], $this->theme, !$this->useCache);
         $collection = new CmsObjectCollection($collection);
         return $collection;
@@ -85,8 +100,13 @@ class CmsObjectQuery
      */
     public function __call($method, $parameters)
     {
-        $collection = $this->all();
-        return call_user_func_array(array($collection, $method), $parameters);
+        if (method_exists('Cms\Classes\CmsObjectCollection', $method)) {
+            $collection = $this->all();
+            return call_user_func_array(array($collection, $method), $parameters);
+        }
+
+        $className = get_class($this);
+        throw new \BadMethodCallException("Call to undefined method {$className}::{$method}()");
     }
 
 }

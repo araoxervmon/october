@@ -9,6 +9,7 @@
 @color-component-text:          #475354;
 @color-component-hover-bg:      #3382b6;
 @color-component-hover-text:    #ffffff;
+@color-component-placeholder:   #e0e0e0;
 @color-group-bg:                #f1f3f4;
 
 .component-lego-icon() {
@@ -26,10 +27,13 @@
     .icon(@puzzle-piece);
 }
 
-div.control-componentlist div.components div.layout-cell, .component-list .components div.layout-cell {
+.draggable-component-item,
+.component-list .components div.layout-cell,
+div.control-componentlist div.components div.layout-cell {
     font-size: 11px;
     cursor: pointer;
     background: @color-component-bg;
+    .user-select(none);
 
     &:hover {
         background: @color-component-hover-bg;
@@ -82,6 +86,15 @@ div.control-componentlist div.components div.layout-cell, .component-list .compo
             }
         }
     }
+
+    &.placeholder > div {
+        background: @color-component-placeholder;
+        color: @color-component-placeholder;
+        &:before, &:after {
+            color: @color-component-placeholder !important;
+            text-shadow: none !important;
+        }
+    }
 }
 
 div.control-componentlist {
@@ -89,6 +102,10 @@ div.control-componentlist {
     background-color: @color-component-list-bg;
     padding: 0;
     .transition(all 0.3s ease);
+
+    &.droppable {
+        background-color: lighten(@color-component-list-bg, 20%);
+    }
 
     &.has-components {
         padding: 10px;
@@ -199,13 +216,19 @@ div.control-componentlist {
     }
 }
 
+.draggable-component-item {
+    .opacity(.6);
+    span.alias { display: none; }
+    a.remove { display: none; }
+}
+
 .component-list .components {
     div.layout {
         div.layout-row {
             div.layout-cell {
                 border-top: 1px solid @color-panel-light;
-                span.alias {display: none;}
-                a.remove {display: none;}
+                span.alias { display: none; }
+                a.remove { display: none; }
 
                 &:last-child > div {
                     border-right: none;

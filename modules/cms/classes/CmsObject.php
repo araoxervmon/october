@@ -11,6 +11,7 @@ use October\Rain\Support\ValidationException;
 use Exception;
 use RecursiveIteratorIterator;
 use RecursiveDirectoryIterator;
+use ArrayAccess;
 
 /**
  * This is a base class for all CMS objects - content files, pages, partials and layouts.
@@ -19,7 +20,7 @@ use RecursiveDirectoryIterator;
  * @package october\cms
  * @author Alexey Bobkov, Samuel Georges
  */
-class CmsObject
+class CmsObject implements ArrayAccess
 {
     /**
      * @var string Specifies the file name corresponding the CMS object.
@@ -61,6 +62,7 @@ class CmsObject
     /**
      * Creates an instance of the object and associates it with a CMS theme.
      * @param \Cms\Classes\Theme $theme Specifies the theme the object belongs to.
+     * If the theme is specified as NULL, then a query can be performed on the object directly.
      */
     public function __construct(Theme $theme = null)
     {
@@ -149,6 +151,9 @@ class CmsObject
     {
         if (!FileHelper::validatePath($fileName, static::getMaxAllowedPathNesting()))
             throw new SystemException(Lang::get('cms::lang.cms_object.invalid_file', ['name'=>$fileName]));
+
+        if (!strlen(File::extension($fileName)))
+            $fileName .= '.htm';
 
         $fullPath = static::getFilePath($theme, $fileName);
 
@@ -410,6 +415,8 @@ class CmsObject
 
     /**
      * Implements the getter functionality.
+     * @param  string  $name
+     * @return void
      */
     public function __get($name)
     {
@@ -422,7 +429,6 @@ class CmsObject
 
     /**
      * Determine if an attribute exists on the object.
-     *
      * @param  string  $key
      * @return void
      */
@@ -433,6 +439,47 @@ class CmsObject
             return true;
 
         return false;
+    }
+
+    /**
+     * Determine if the given attribute exists.
+     * @param  mixed  $offset
+     * @return bool
+     */
+    public function offsetExists($offset)
+    {
+        return isset($this->$offset);
+    }
+
+    /**
+     * Get the value for a given offset.
+     * @param  mixed  $offset
+     * @return mixed
+     */
+    public function offsetGet($offset)
+    {
+        return $this->$offset;
+    }
+
+    /**
+     * Set the value for a given offset.
+     * @param  mixed  $offset
+     * @param  mixed  $value
+     * @return void
+     */
+    public function offsetSet($offset, $value)
+    {
+        $this->$offset = $value;
+    }
+
+    /**
+     * Unset the value for a given offset.
+     * @param  mixed  $offset
+     * @return void
+     */
+    public function offsetUnset($offset)
+    {
+        unset($this->$offset);
     }
 
     //
@@ -457,8 +504,15 @@ class CmsObject
      */
     public function __call($method, $parameters)
     {
-        $query = $this->newQuery();
-        return call_user_func_array(array($query, $method), $parameters);
+        // If this object is populated with a theme, then a query
+        // cannot be performed on it to reduce overhead on populated objects.
+        if (!$this->theme) {
+            $query = $this->newQuery();
+            return call_user_func_array(array($query, $method), $parameters);
+        }
+
+        $className = get_class($this);
+        throw new \BadMethodCallException("Call to undefined method {$className}::{$method}()");
     }
 
     /**

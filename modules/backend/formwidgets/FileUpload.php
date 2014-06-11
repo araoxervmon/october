@@ -153,8 +153,8 @@ class FileUpload extends FormWidgetBase
      */
     public function loadAssets()
     {
-        $this->addCss('css/fileupload.css');
-        $this->addJs('js/fileupload.js');
+        $this->addCss('css/fileupload.css', 'core');
+        $this->addJs('js/fileupload.js', 'core');
     }
 
     /**
@@ -191,7 +191,7 @@ class FileUpload extends FormWidgetBase
 
             $file = new File();
             $file->data = $uploadedFile;
-            $file->public = $fileRelation->isPublic();
+            $file->is_public = $fileRelation->isPublic();
             $file->save();
 
             $fileRelation->add($file, $this->sessionKey);

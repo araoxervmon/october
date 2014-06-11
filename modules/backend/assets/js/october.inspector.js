@@ -167,13 +167,13 @@
                 offset: offset,
                 offsetX: offsetX,
                 offsetY: offsetY,
-                width: 300
+                width: 400
             })
 
             self.$el.on('hiding.oc.popover', function(e){self.onBeforeHide(e)})
             self.$el.on('hide.oc.popover', function(){self.cleanup()})
             self.$el.addClass('inspector-open')
-            
+
             $(self.$el.data('oc.popover').$container).on('keydown', function(e){
                 if(e.keyCode == 13)
                     $(this).trigger('close.oc.popover')
@@ -194,7 +194,7 @@
 
         var e = $.Event('showing.oc.inspector')
         this.$el.trigger(e, [{callback: displayPopover}])
-        if (e.isDefaultPrevented()) 
+        if (e.isDefaultPrevented())
             return
 
         if (!e.isPropagationStopped())
@@ -467,7 +467,7 @@
 
             $.each(this.fieldDef.options, function(value, title){
                 options.push({value: value, title: title})
-            }) 
+            })
 
            data.options = options
         }
@@ -580,8 +580,8 @@
                     $select.append($('<option></option>'))
 
                 if (data.options)
-                    $.each(data.options, function(value, title) {
-                        $select.append($('<option></option>').attr('value', value).text(title))
+                    $.each(data.options, function(key, obj) {
+                        $select.append($('<option></option>').attr('value', obj.value).text(obj.title))
                     })
 
                 var hasOption = $('option[value="' + currentValue + '"]', $select).length > 0
@@ -591,7 +591,7 @@
                     $('option:first-child', $select).attr("selected", "selected");
 
                 $select.trigger('change')
-                
+
                 self.hideLoadingIndicator()
             },
             error: function(jqXHR, textStatus, errorThrown) {

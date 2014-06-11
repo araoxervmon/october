@@ -1,3 +1,25 @@
+* **Build x** (2014-06-10)
+  - Form fields can now pass context via their name definnition using syntax `field@context`.
+  - Added a code editor preferences page.
+
+* **Build 101** (2014-06-06)
+  - Added a global traceLog() helper for help with debugging.
+  - New settings area added to manage Email templates and layouts.
+
+* **Build 99** (2014-06-05)
+  - Plugins can now be removed, refreshed and disabled via the back-end.
+
+* **Build 96** (2014-05-29)
+  - Plugin CLI commands are now case insensitive.
+  - Fixes a bug where belongsTo form field relations were not being set.
+  - Form field `richeditor` (WYSIWYG) no longer adds full page HTML tags.
+
+* **Build 92** (2014-05-24)
+  - Components can now be dragged from the side navigation directly on to the page.
+  - Asset maker methods (addJs, addCss, addRss) now use an optional build code, either *core* or a plugin code. This is converted to a version number to ensure updates are not affected by cached assets.
+  - Added new method `addComponent()` to Cms Controller. Components can now act as a proxy for other components.
+  - Added new override method `onInit()` to Components, called before AJAX requests are processed.
+
 * **Build 90** (2014-05-23)
   - Class `CmsPropertyHelper` has been deprecated, will be removed year > 2014.
   - Cms Objects now support basic queries that return a collection. Eg: `Page::sortBy('title')->lists('title', 'baseFileName')`

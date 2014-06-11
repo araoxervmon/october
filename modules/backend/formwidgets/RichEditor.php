@@ -17,10 +17,17 @@ class RichEditor extends FormWidgetBase
     public $defaultAlias = 'richeditor';
 
     /**
+     * @var boolean Determines whether content has HEAD and HTML tags.
+     */
+    public $fullPage = false;
+
+    /**
      * {@inheritDoc}
      */
     public function render()
     {
+        $this->fullPage = $this->getConfig('fullPage', $this->fullPage);
+
         $this->prepareVars();
         return $this->makePartial('richeditor');
     }
@@ -30,6 +37,7 @@ class RichEditor extends FormWidgetBase
      */
     public function prepareVars()
     {
+        $this->vars['fullPage'] = $this->fullPage;
         $this->vars['stretch'] = $this->formField->stretch;
         $this->vars['size'] = $this->formField->size;
         $this->vars['name'] = $this->formField->getName();
@@ -41,10 +49,10 @@ class RichEditor extends FormWidgetBase
      */
     public function loadAssets()
     {
-        $this->addCss('vendor/redactor/redactor.css');
-        $this->addCss('css/richeditor.css');
-        $this->addJs('vendor/redactor/redactor.js');
-        $this->addJs('js/richeditor.js');
+        $this->addCss('vendor/redactor/redactor.css', 'core');
+        $this->addCss('css/richeditor.css', 'core');
+        $this->addJs('vendor/redactor/redactor.js', 'core');
+        $this->addJs('js/richeditor.js', 'core');
     }
 
 }
